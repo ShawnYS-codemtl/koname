@@ -2,6 +2,8 @@
 export type PieceType = 'regular' | 'king';
 export type Player = 'red' | 'black';
 export type GameMode = 'checkers' | 'konane';
+export type GameType = 'pvp' | 'ai';
+export type AIDifficulty = 'easy' | 'medium' | 'hard';
 
 export interface Piece {
   player: Player;
@@ -24,4 +26,12 @@ export interface GameState {
   konaneSetupPhase: boolean;
   konaneSetupCount: number;
   lastMoveDirection?: [number, number];
+}
+
+export interface AIState {
+  gameType: GameType;
+  aiPlayer: Player | null;
+  difficulty: AIDifficulty;
+  isThinking: boolean;
+  positionsEvaluated: number;
 }

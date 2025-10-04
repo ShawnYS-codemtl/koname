@@ -1,4 +1,5 @@
 import { Piece, Position, Player } from "../types/game.types";
+import { hasAvailableCaptures } from "./gameUtils";
 
 
 // Game Logic Functions
@@ -58,3 +59,49 @@ export const getCheckersValidMoves = (board: (Piece | null)[][], pos: Position, 
   return { moves, captures };
 };
 
+export const getAllCheckersMoves = (
+  board: (Piece | null)[][],
+  player: Player
+): Array<{from: Position, to: Position}> => {
+  const moves: Array<{from: Position, to: Position}> = [];
+  const mustCapture = hasAvailableCaptures(board, player, 'checkers');
+  
+  for (let row = 0; row < board.length; row++) {
+    for (let col = 0; col < board[row].length; col++) {
+      const piece = board[row][col];
+      if (piece && piece.player === player) {
+        const from = { row, col };
+        const { moves: regularMoves, captures } = getCheckersValidMoves(board, from, piece);
+        const validMoves = mustCapture ? captures : [...regularMoves, ...captures];
+        validMoves.forEach(to => moves.push({ from, to }));
+      }
+    }
+  }
+  return moves;
+};
+
+// Simulate a move and return new board state
+export const simulateCheckersMove = (board: (Piece | null)[][], from: Position, to: Position): (Piece | null)[][] => {
+  const newBoard = board.map(row => [...row]);
+  const piece = newBoard[from.row][from.col]!;
+  
+  newBoard[to.row][to.col] = piece;
+  newBoard[from.row][from.col] = null;
+  
+  const rowDiff = to.row - from.row;
+  const colDiff = to.col - from.col;
+  
+  if (Math.abs(rowDiff) === 2) {
+    const capturedRow = from.row + rowDiff / 2;
+    const capturedCol = from.col + colDiff / 2;
+    newBoard[capturedRow][capturedCol] = null;
+  }
+    
+  // Promote to king
+  const boardSize = board.length;
+  if ((piece.player === 'red' && to.row === 0) || (piece.player === 'black' && to.row === boardSize - 1)) {
+    newBoard[to.row][to.col] = { ...piece, type: 'king' };
+  }
+
+  return newBoard;
+}

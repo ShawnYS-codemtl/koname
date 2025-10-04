@@ -1,5 +1,5 @@
 
-import { Piece, Position } from "../types/game.types";
+import { Piece, Position, Player } from "../types/game.types";
 
 
 // Konane Game Logic
@@ -53,4 +53,45 @@ export const getKonaneValidMoves = (board: (Piece | null)[][], pos: Position, pi
   }
 
   return captures;
+};
+
+export const getAllKonaneMoves = (
+  board: (Piece | null)[][],
+  player: Player
+): Array<{from: Position, to: Position}> => {
+  const moves: Array<{from: Position, to: Position}> = [];
+  
+  for (let row = 0; row < board.length; row++) {
+    for (let col = 0; col < board[row].length; col++) {
+      const piece = board[row][col];
+      if (piece && piece.player === player) {
+        const from = { row, col };
+        const captures = getKonaneValidMoves(board, from, piece);
+        captures.forEach(to => moves.push({ from, to }));
+      }
+    }
+  }
+  return moves;
+};
+
+// Simulate a move and return new board state
+export const simulateKonaneMove = (board: (Piece | null)[][], from: Position, to: Position): (Piece | null)[][] => {
+  const newBoard = board.map(row => [...row]);
+  const piece = newBoard[from.row][from.col]!;
+  
+  newBoard[to.row][to.col] = piece;
+  newBoard[from.row][from.col] = null;
+  
+  const rowDiff = to.row - from.row;
+  const colDiff = to.col - from.col;
+  
+  const rowDir = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
+  const colDir = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
+  const jumpedRow = from.row + rowDir;
+  const jumpedCol = from.col + colDir;
+  if (newBoard[jumpedRow][jumpedCol]) {
+    newBoard[jumpedRow][jumpedCol] = null;
+  }
+   
+  return newBoard;
 };

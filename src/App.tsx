@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import GameControls from './components/GameControls';
 import Board from './components/Board';
-import {Position, GameState, GameMode} from './types/game.types';
+import {Position, GameState, GameMode, AIState, GameType, Player, AIDifficulty} from './types/game.types';
 import { initializeCheckersBoard, getCheckersValidMoves} from './utils/checkersLogic';
 import { initializeKonaneBoard, getKonaneValidMoves } from './utils/konaneLogic';
 import { hasAvailableCaptures, hasAnyValidMoves, checkWinner } from './utils/gameUtils';
+import { getCheckersAIMove } from './ai/checkersAI';
+import { getKonaneAIMove } from './ai/konaneAI';
   
 
 const CheckersGame: React.FC = () => {
@@ -12,6 +14,13 @@ const CheckersGame: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [history, setHistory] = useState<GameState[]>([]);
+  const [aiState, setAIState] = useState<AIState>({
+    gameType: 'pvp',
+    aiPlayer: null,
+    difficulty: 'easy',
+    isThinking: false,
+    positionsEvaluated: 0
+  });
 
   useEffect(() => {
     resetGame();
@@ -40,6 +49,28 @@ const CheckersGame: React.FC = () => {
 
   const handleGameModeChange = (mode: GameMode) => {
     resetGame(mode);
+  };
+
+  const handleGameTypeChange = (type: GameType) => {
+    setAIState({
+      ...aiState,
+      gameType: type,
+      aiPlayer: type === 'ai' ? 'black' : null
+    });
+  };
+
+  const handleAIPlayerChange = (player: Player) => {
+    setAIState({
+      ...aiState,
+      aiPlayer: player
+    });
+  };
+
+  const handleDifficultyChange = (difficulty: AIDifficulty) => {
+    setAIState({
+      ...aiState,
+      difficulty
+    });
   };
 
   const handleEndTurn = () => {
@@ -74,6 +105,11 @@ const CheckersGame: React.FC = () => {
 
   const handleSquareClick = (row: number, col: number) => {
     if (!gameState || gameState.winner) return;
+
+    // Don't allow clicks if AI is thinking or if it's AI's turn
+    if (aiState.isThinking || (aiState.gameType === 'ai' && gameState.currentPlayer === aiState.aiPlayer)) {
+      return;
+    }
 
     // Konane setup phase
     if (gameState.konaneSetupPhase) {
@@ -260,6 +296,98 @@ const CheckersGame: React.FC = () => {
     });
   };
 
+  // AI Move Logic
+  useEffect(() => {
+    if (!gameState || gameState.winner || gameState.konaneSetupPhase) return;
+    if (aiState.gameType !== 'ai' || gameState.currentPlayer !== aiState.aiPlayer) return;
+    if (aiState.isThinking) return;
+
+    // Handle Konane setup phase
+    if (gameState.konaneSetupPhase) {
+      setAIState({ ...aiState, isThinking: true, positionsEvaluated: 0 });
+      
+      setTimeout(() => {
+        const size = gameState.board.length;
+        const center = Math.floor(size / 2);
+        
+        if (gameState.konaneSetupCount === 0 && aiState.aiPlayer === 'black') {
+          // AI removes first black piece from center
+          const centerPositions = [
+            { row: center - 1, col: center - 1 },
+            { row: center - 1, col: center },
+            { row: center, col: center - 1 },
+            { row: center, col: center }
+          ];
+          const validCenter = centerPositions.find(pos => 
+            gameState.board[pos.row][pos.col]?.player === 'black'
+          );
+          if (validCenter) {
+            handleSquareClick(validCenter.row, validCenter.col);
+          }
+        } else if (gameState.konaneSetupCount === 1 && aiState.aiPlayer === 'red') {
+          // AI removes adjacent red piece
+          let removedPos: Position | null = null;
+          for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+              if (!gameState.board[r][c]) {
+                removedPos = { row: r, col: c };
+                break;
+              }
+            }
+            if (removedPos) break;
+          }
+          
+          if (removedPos) {
+            const adjacentPositions = [
+              { row: removedPos.row - 1, col: removedPos.col },
+              { row: removedPos.row + 1, col: removedPos.col },
+              { row: removedPos.row, col: removedPos.col - 1 },
+              { row: removedPos.row, col: removedPos.col + 1 }
+            ];
+            
+            const validAdjacent = adjacentPositions.find(pos => 
+              pos.row >= 0 && pos.row < size && pos.col >= 0 && pos.col < size &&
+              gameState.board[pos.row][pos.col]?.player === 'red'
+            );
+            
+            if (validAdjacent) {
+              handleSquareClick(validAdjacent.row, validAdjacent.col);
+            }
+          }
+        }
+        
+        setAIState({ ...aiState, isThinking: false, positionsEvaluated: 0 });
+      }, 800);
+      
+      return;
+    }
+
+    // AI's turn - make a move after delay
+    setAIState({ ...aiState, isThinking: true, positionsEvaluated: 0 });
+
+    setTimeout(() => {
+      // Select appropriate AI function based on game mode
+      const getAIMoveFn = gameState.gameMode === 'checkers' 
+        ? getCheckersAIMove 
+        : getKonaneAIMove;
+      
+      const { move, positionsEvaluated } = getAIMoveFn(
+        gameState,
+        aiState.aiPlayer!,
+        aiState.difficulty
+      );
+
+      setAIState({ ...aiState, isThinking: false, positionsEvaluated });
+
+      if (move) {
+        // Simulate clicking the piece and then the destination
+        setTimeout(() => {
+          makeMove(move.from, move.to);
+        }, 300);
+      }
+    }, 800); // AI "thinking" delay
+  }, [gameState?.currentPlayer, gameState?.board, aiState.gameType, aiState.aiPlayer]);
+
   if (!gameState) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
 
   const cellSize = Math.min(600 / boardSize, 60);
@@ -283,8 +411,12 @@ const CheckersGame: React.FC = () => {
             konaneSetupCount={gameState.konaneSetupCount}
             showEndTurn={showEndTurnButton}
             historyLength={history.length}
+            aiState={aiState}
             onBoardSizeChange={setBoardSize}
             onGameModeChange={handleGameModeChange}
+            onGameTypeChange={handleGameTypeChange}
+            onAIPlayerChange={handleAIPlayerChange}
+            onDifficultyChange={handleDifficultyChange}
             onToggleSettings={() => setShowSettings(!showSettings)}
             onReset={() => resetGame()}
             onEndTurn={handleEndTurn}
