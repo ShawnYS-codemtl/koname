@@ -1,7 +1,7 @@
-import { GameState, AIDifficulty, Position, Player } from '../types/game.types';
-import { getAllKonaneMoves, simulateKonaneMove } from '../utils/konaneLogic';
+import { GameState, AIDifficulty, Position, Player, Piece } from '../types/game.types';
+import { getAllKonaneMoves, simulateKonaneMove, getKonaneValidMoves } from '../utils/konaneLogic';
 import { minimax } from './minimax';
-import { evaluateBoard } from './evaluation';
+import { evaluateBoardSimple, evaluateKonaneAdvanced } from './evaluation';
 
 export const getKonaneAIMove = (
   gameState: GameState,
@@ -9,6 +9,12 @@ export const getKonaneAIMove = (
   difficulty: AIDifficulty
 ): { move: {from: Position, to: Position} | null, positionsEvaluated: number } => {
   const depth = difficulty === 'easy' ? 2 : difficulty === 'medium' ? 4 : 6;
+
+  const evaluateFn = difficulty === 'hard' 
+    ? (board: (Piece | null)[][], player: Player) => 
+        evaluateKonaneAdvanced(board, player, getKonaneValidMoves)  // ← Konane-specific
+    : evaluateBoardSimple;
+
   const moves = getAllKonaneMoves(gameState.board, aiPlayer);
   
   if (moves.length === 0) return { move: null, positionsEvaluated: 0 };
@@ -22,11 +28,13 @@ export const getKonaneAIMove = (
     const value = minimax({
       board: newBoard,
       depth: depth - 1,
+      alpha: -Infinity,
+      beta: Infinity,
       maximizingPlayer: false,
       aiPlayer,
       getAllMovesFn: getAllKonaneMoves,        // ← Konane-specific
       simulateMoveFn: simulateKonaneMove,      // ← Konane-specific
-      evaluateFn: evaluateBoard,
+      evaluateFn: evaluateFn,
       positionsEvaluated
     });
     

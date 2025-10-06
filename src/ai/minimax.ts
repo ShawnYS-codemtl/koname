@@ -3,6 +3,8 @@ import { Piece, Position, Player } from '../types/game.types';
 interface MinimaxParams {
   board: (Piece | null)[][];
   depth: number;
+  alpha: number;  
+  beta: number;   
   maximizingPlayer: boolean;
   aiPlayer: Player;
   getAllMovesFn: (board: (Piece | null)[][], player: Player) => Array<{from: Position, to: Position}>;
@@ -14,6 +16,8 @@ interface MinimaxParams {
 export const minimax = ({
   board,
   depth,
+  alpha,     
+  beta,       
   maximizingPlayer,
   aiPlayer,
   getAllMovesFn,
@@ -38,6 +42,8 @@ export const minimax = ({
       const evaluation = minimax({
         board: newBoard,
         depth: depth - 1,
+        alpha,      
+        beta,       
         maximizingPlayer: false,
         aiPlayer,
         getAllMovesFn,
@@ -46,6 +52,11 @@ export const minimax = ({
         positionsEvaluated
       });
       maxEval = Math.max(maxEval, evaluation);
+      alpha = Math.max(alpha, evaluation);  
+      
+      if (beta <= alpha) {  // Prune
+        break;  // Beta cutoff - opponent won't allow this path
+      }
     }
     return maxEval;
   } else {
@@ -55,6 +66,8 @@ export const minimax = ({
       const evaluation = minimax({
         board: newBoard,
         depth: depth - 1,
+        alpha,      
+        beta,       
         maximizingPlayer: true,
         aiPlayer,
         getAllMovesFn,
@@ -63,6 +76,11 @@ export const minimax = ({
         positionsEvaluated
       });
       minEval = Math.min(minEval, evaluation);
+      beta = Math.min(beta, evaluation);  // Update beta
+      
+      if (beta <= alpha) { // Prune!
+        break;  // Alpha cutoff - we won't allow this path
+      }
     }
     return minEval;
   }

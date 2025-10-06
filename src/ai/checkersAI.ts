@@ -1,7 +1,7 @@
 import { GameState, AIDifficulty, Position, Player } from '../types/game.types';
 import { getAllCheckersMoves, simulateCheckersMove } from '../utils/checkersLogic';
 import { minimax } from './minimax';
-import { evaluateBoard } from './evaluation';
+import { evaluateBoardSimple, evaluateCheckersAdvanced } from './evaluation';
 
 export const getCheckersAIMove = (
   gameState: GameState,
@@ -9,6 +9,12 @@ export const getCheckersAIMove = (
   difficulty: AIDifficulty
 ): { move: {from: Position, to: Position} | null, positionsEvaluated: number } => {
   const depth = difficulty === 'easy' ? 2 : difficulty === 'medium' ? 4 : 6;
+
+  // Choose evaluation function based on difficulty
+  const evaluateFn = difficulty === 'hard' 
+    ? evaluateCheckersAdvanced 
+    : evaluateBoardSimple;
+
   const moves = getAllCheckersMoves(gameState.board, aiPlayer);
   
   if (moves.length === 0) return { move: null, positionsEvaluated: 0 };
@@ -22,11 +28,13 @@ export const getCheckersAIMove = (
     const value = minimax({
       board: newBoard,
       depth: depth - 1,
+      alpha: -Infinity,
+      beta: Infinity,
       maximizingPlayer: false,
       aiPlayer,
       getAllMovesFn: getAllCheckersMoves,
       simulateMoveFn: simulateCheckersMove,
-      evaluateFn: evaluateBoard,
+      evaluateFn: evaluateFn,
       positionsEvaluated
     });
     
