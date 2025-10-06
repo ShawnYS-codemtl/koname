@@ -106,9 +106,17 @@ const CheckersGame: React.FC = () => {
   const handleSquareClick = (row: number, col: number) => {
     if (!gameState || gameState.winner) return;
 
-    // Don't allow clicks if AI is thinking or if it's AI's turn
-    if (aiState.isThinking || (aiState.gameType === 'ai' && gameState.currentPlayer === aiState.aiPlayer)) {
-      return;
+    // During setup phase, only block if it's AI's turn
+    if (gameState.konaneSetupPhase) {
+      if (aiState.gameType === 'ai' && gameState.currentPlayer === aiState.aiPlayer && aiState.isThinking) {
+        return;
+      }
+      // Allow human player to click during their setup turn
+    } else {
+      // During regular gameplay, don't allow clicks if AI is thinking or if it's AI's turn
+      if (aiState.isThinking || (aiState.gameType === 'ai' && gameState.currentPlayer === aiState.aiPlayer)) {
+        return;
+      }
     }
 
     // Konane setup phase
@@ -298,7 +306,7 @@ const CheckersGame: React.FC = () => {
 
   // AI Move Logic
   useEffect(() => {
-    if (!gameState || gameState.winner || gameState.konaneSetupPhase) return;
+    if (!gameState || gameState.winner) return;
     if (aiState.gameType !== 'ai' || gameState.currentPlayer !== aiState.aiPlayer) return;
     if (aiState.isThinking) return;
 
@@ -361,7 +369,7 @@ const CheckersGame: React.FC = () => {
       
       return;
     }
-
+  
     // AI's turn - make a move after delay
     setAIState({ ...aiState, isThinking: true, positionsEvaluated: 0 });
 
