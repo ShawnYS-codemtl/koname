@@ -4,14 +4,14 @@
 
 
 .checkers-bg {
-  background-image: url('/public/woodgrain.jpg');
+  background-image: url('/woodgrain.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
 
 .konane-bg {
-  background-image: url('sand.jpg');
+  background-image: url('/sand.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
